@@ -1,4 +1,14 @@
-# pyrefly: ignore [missing-import]
+import os
+# Silence ChromaDB's internal telemetry connection errors
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
+# Patch PyTorch class inspection conflict with Streamlit's file watcher
+try:
+    import torch
+    torch.classes.__path__ = []
+except ImportError:
+    pass
+
 import streamlit as st
 
 from document_parser import extract_text
