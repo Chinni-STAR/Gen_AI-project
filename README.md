@@ -9,7 +9,7 @@ Unlike generic chatbot wrappers, this application embeds candidate resumes into 
 ## 📐 System Architecture
 
 ```
-![System Architecture](assets/sysarch.png)
+![System Architecture](downloads/sysarch.png)
 ```
 
 ---
