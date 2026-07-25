@@ -6,7 +6,7 @@ Unlike generic chatbot wrappers, this application embeds candidate resumes into 
 
 ---
 
-## ✨ Core Features & Problem Statement Implementation
+## Core Features & Problem Statement Implementation
 
 1. **Structured Evaluation Output**:
    - **Fit Score**: Quantitative compatibility metric (0 to 100).
@@ -83,10 +83,7 @@ resume-rag-streamlit/
 - Hugging Face API Token (Free tier available at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens))
 
 ### 1. Clone & Setup Environment
-```bash
-git clone <repository_url>
-cd resume-rag-streamlit
-
+```
 # Create virtual environment
 python -m venv venv
 
@@ -98,7 +95,7 @@ source venv/bin/activate
 ```
 
 ### 2. Install Dependencies
-```bash
+```
 pip install -r requirements.txt
 ```
 
@@ -115,12 +112,12 @@ TOP_K_RESULTS=5
 ```
 
 ### 4. Run Unit Tests
-```bash
+```
 python -m unittest test_pipeline.py
 ```
 
 ### 5. Launch Application
-```bash
+```
 streamlit run app.py
 ```
 Open your browser at `http://localhost:8501`.
