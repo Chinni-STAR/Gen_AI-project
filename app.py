@@ -57,23 +57,32 @@ st.markdown(
     .suggestion-box {
         background-color: #F0FDF4;
         border-left: 4px solid #16A34A;
+        color: #1E293B;
         padding: 12px 16px;
         margin-bottom: 10px;
-        border-radius: 4px;
+        border-radius: 6px;
     }
     .missing-skill-box {
         background-color: #FEF2F2;
-        border-left: 4px solid #EF4444;
-        padding: 8px 12px;
-        margin-bottom: 6px;
-        border-radius: 4px;
+        border-left: 5px solid #DC2626;
+        color: #7F1D1D;
+        font-weight: 600;
+        font-size: 0.98rem;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
     .matched-skill-box {
         background-color: #F0FDF4;
-        border-left: 4px solid #22C55E;
-        padding: 8px 12px;
-        margin-bottom: 6px;
-        border-radius: 4px;
+        border-left: 5px solid #16A34A;
+        color: #14532D;
+        font-weight: 600;
+        font-size: 0.98rem;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
     </style>
     """,
@@ -95,6 +104,10 @@ if "screener_result" not in st.session_state:
     st.session_state.screener_result = None
 if "rag_trace" not in st.session_state:
     st.session_state.rag_trace = None
+if "improve_result" not in st.session_state:
+    st.session_state.improve_result = None
+if "target_role_preset" not in st.session_state:
+    st.session_state.target_role_preset = ""
 
 # ---------------------------------------------------------------------------
 # Sidebar: Upload & Technical Settings
@@ -122,6 +135,7 @@ with st.sidebar:
                     st.session_state.chat_history = []
                     st.session_state.screener_result = None
                     st.session_state.rag_trace = None
+                    st.session_state.improve_result = None
 
                     st.success(f"Indexed **{uploaded_file.name}** into **{num_chunks} vector chunks**!")
                 except Exception as e:
@@ -137,6 +151,7 @@ with st.sidebar:
             st.session_state.chat_history = []
             st.session_state.screener_result = None
             st.session_state.rag_trace = None
+            st.session_state.improve_result = None
             st.rerun()
     else:
         st.info("No active resume loaded. Upload a file above to begin.")
@@ -151,7 +166,7 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Header Section
 # ---------------------------------------------------------------------------
-st.markdown('<div class="main-title">AI Resume Screener & RAG Career Advisor</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">AI Resume Screener & Career Advisor</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">Retrieval-Augmented Generation engine for automated resume screening, skill gap analysis, and interview preparation.</div>',
     unsafe_allow_html=True,
@@ -309,88 +324,172 @@ with tab_screen:
                 st.code(trace["formatted_prompt"], language="markdown")
 
 # ===========================================================================
+# ===========================================================================
 # TAB 2: FOLLOW-UP CHAT & ADVISOR
 # ===========================================================================
 with tab_advisor:
-    st.subheader("💬 Interactive Candidate & Job Preparation Advisor")
+    st.subheader("💬 Interactive Career Advisor & Interview Coach")
     st.caption(
-        "Ask follow-up questions about candidate strengths, interview strategies, missing qualification mitigations, or targeted technical questions."
+        "Get real-time, personalized guidance grounded in your resume vector index and target job requirements."
     )
 
-    if st.session_state.resume_id and st.session_state.job_description:
-        st.success(
-            f"📎 **Active RAG Context:** Grounded in `{st.session_state.resume_filename}` and current Job Description."
+    # Interactive Guide Expander for Easy Understanding
+    with st.expander("💡 **How to Use this AI Advisor (Quick Guide)**", expanded=False):
+        st.markdown(
+            """
+            - 🎯 **Tailored Job Matching**: Ask about key qualifications and matching strengths for the active job.
+            - ⚠️ **Addressing Gaps**: Get strategic answers and sample interview scripts for missing skills.
+            - 💬 **Interview Preparation**: Practice expected technical & behavioral interview questions.
+            - ⚡ **Instant One-Click Prompts**: Click any quick action button below to start immediately!
+            - 🧠 **Vector RAG Grounding**: Every answer retrieves relevant context chunks from your uploaded resume.
+            """
         )
-    elif st.session_state.resume_id:
-        st.info(f"📎 **Active RAG Context:** Grounded in uploaded resume `{st.session_state.resume_filename}`.")
-    else:
-        st.warning("⚠️ No active resume uploaded. Chat will provide general career coaching advice.")
 
-    # Display chat history
+    # Active Context Indicator & Controls
+    col_status, col_clear = st.columns([3, 1])
+    with col_status:
+        if st.session_state.resume_id and st.session_state.job_description:
+            st.success(
+                f"📎 **Active RAG Grounding:** Grounded in `{st.session_state.resume_filename}` & Target Job Description."
+            )
+        elif st.session_state.resume_id:
+            st.info(f"📎 **Active RAG Grounding:** Grounded in uploaded resume `{st.session_state.resume_filename}`.")
+        else:
+            st.warning("⚠️ **General Mode:** Upload a resume in the sidebar to enable full RAG-grounded insights.")
+
+    with col_clear:
+        if st.session_state.chat_history:
+            if st.button("🗑️ Clear Chat", use_container_width=True, help="Reset conversation history"):
+                st.session_state.chat_history = []
+                st.rerun()
+
+    # Quick Question Action Buttons
+    st.markdown("##### ⚡ Quick Prompt Shortcuts")
+    prompt_to_process = None
+
+    qcol1, qcol2, qcol3, qcol4 = st.columns(4)
+    with qcol1:
+        if st.button("🎯 Top Strengths", use_container_width=True, help="Analyze matching strengths"):
+            prompt_to_process = "What are my top 3 matching strengths and key qualifications for this position?"
+    with qcol2:
+        if st.button("⚠️ Handle Skill Gaps", use_container_width=True, help="Strategy to address missing requirements"):
+            prompt_to_process = "How can I effectively address missing skills or requirements during an interview?"
+    with qcol3:
+        if st.button("💬 Likely Questions", use_container_width=True, help="Targeted technical & behavioral questions"):
+            prompt_to_process = "What targeted technical and behavioral interview questions should I prepare for?"
+    with qcol4:
+        if st.button("📝 Resume Bullets", use_container_width=True, help="Role-tailored resume bullet point scripts"):
+            prompt_to_process = "Can you provide role-tailored bullet point scripts to highlight my key achievements?"
+
+    st.divider()
+
+    # Display Chat History
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # User Chat Input
-    user_query = st.chat_input("e.g. How can the candidate address the missing Kubernetes requirement in an interview?")
-
+    # Chat Input
+    user_query = st.chat_input("Ask any question about your resume, job fit, interview prep, or career advice...")
     if user_query:
-        st.session_state.chat_history.append({"role": "user", "content": user_query})
+        prompt_to_process = user_query
+
+    # Process Query (from input box or quick prompt button)
+    if prompt_to_process:
+        st.session_state.chat_history.append({"role": "user", "content": prompt_to_process})
         with st.chat_message("user"):
-            st.markdown(user_query)
+            st.markdown(prompt_to_process)
 
         with st.chat_message("assistant"):
-            with st.spinner("Retrieving relevant context & generating response..."):
+            with st.spinner("Searching vector index & generating advisor guidance..."):
                 try:
                     answer, used_resume = ask_advisor(
-                        question=user_query,
+                        question=prompt_to_process,
                         resume_id=st.session_state.resume_id,
                         job_description=st.session_state.job_description,
                         chat_history=st.session_state.chat_history[:-1],
                     )
                     st.markdown(answer)
                     if used_resume:
-                        st.caption("📎 Answer grounded in candidate's vector database chunks.")
+                        st.caption("📎 *Answer grounded in retrieved candidate vector database chunks.*")
                     st.session_state.chat_history.append({"role": "assistant", "content": answer})
                 except Exception as e:
                     st.error(f"Advisor error: {str(e)}")
+        st.rerun()
 
 # ===========================================================================
 # TAB 3: RESUME IMPROVER
 # ===========================================================================
 with tab_improve:
     st.subheader("✨ Comprehensive Resume Optimizer & Role Tailoring Engine")
-    st.caption("Generates section-by-section rewrite suggestions showing EXACTLY what to add, modify, or rephrase to make your resume 100% suitable for your target role.")
+    st.caption(
+        "Generates section-by-section rewrite suggestions showing EXACTLY what to add, modify, or rephrase to make your resume 100% suitable for your target role."
+    )
 
+    # Interactive Guide Expander for Easy Understanding
+    with st.expander("💡 **How to Use Resume Optimizer (Quick Guide)**", expanded=False):
+        st.markdown(
+            """
+            - 🎯 **Target Role Alignment**: Select or type your desired target job title to receive customized recommendations.
+            - 🔍 **Full Resume Analysis**: Evaluates your uploaded resume text against target role keywords and ATS best practices.
+            - 📝 **Copy-Pasteable Rewrites**: Provides exact text for Professional Summary, Skills, Work Experience, and ATS formatting.
+            - ⚡ **Role Preset Shortcuts**: Click any target role preset button below to quickly populate target job titles!
+            """
+        )
+
+    # Active Alignment Banner
     if st.session_state.job_description and st.session_state.job_description.strip():
         st.success("🎯 **Target Role Alignment:** Recommendations will analyze your resume against the active Job Description.")
 
+    # Target Role Quick Selection Shortcuts
+    st.markdown("##### ⚡ Quick Target Role Shortcuts")
+    rcol1, rcol2, rcol3, rcol4 = st.columns(4)
+    with rcol1:
+        if st.button("💻 Backend Engineer", use_container_width=True, help="Set target role to Senior Backend Engineer"):
+            st.session_state.target_role_preset = "Senior Backend Engineer"
+    with rcol2:
+        if st.button("🌐 Full Stack Dev", use_container_width=True, help="Set target role to Full Stack Developer"):
+            st.session_state.target_role_preset = "Full Stack Developer"
+    with rcol3:
+        if st.button("📊 Data & AI Engineer", use_container_width=True, help="Set target role to Data Scientist / AI Engineer"):
+            st.session_state.target_role_preset = "Data Scientist / AI Engineer"
+    with rcol4:
+        if st.button("☁️ DevOps & Cloud", use_container_width=True, help="Set target role to DevOps / Cloud Engineer"):
+            st.session_state.target_role_preset = "DevOps / Cloud Engineer"
+
     target_role_input = st.text_input(
         "Target Role Title:",
+        value=st.session_state.target_role_preset,
         placeholder="e.g. Senior Backend Engineer / Full Stack Developer",
         help="Specify the target job title to customize resume recommendations.",
     )
 
-    if st.button("✨ Analyze Full Resume & Generate Role-Tailored Enhancements", type="primary"):
+    if st.button("✨ Analyze Full Resume & Generate Role-Tailored Enhancements", type="primary", use_container_width=True):
         if not st.session_state.resume_id:
             st.error("Please upload and index a resume in the sidebar first.")
         else:
-            with st.spinner("Analyzing resume against target role requirements..."):
+            with st.spinner("Analyzing full resume text against target role requirements..."):
                 try:
                     improve_res = improve_resume(
                         resume_id=st.session_state.resume_id,
                         target_role=target_role_input or None,
                         job_description=st.session_state.job_description or None,
                     )
-
-                    st.markdown(f"### Overall Role Suitability Assessment\n{improve_res.get('overall_feedback', '')}")
-                    st.divider()
-
-                    st.markdown("### Actionable Section Recommendations")
-                    for suggestion in improve_res.get("suggestions", []):
-                        sec = suggestion.get("section", "General")
-                        with st.expander(f"📌 **{sec}**", expanded=True):
-                            st.markdown(f"**Identified Weakness / Gap for Role:** {suggestion.get('issue', '')}")
-                            st.markdown(f"**Exact Recommendation / Addition for Suitability:** {suggestion.get('suggestion', '')}")
+                    st.session_state.improve_result = improve_res
                 except Exception as e:
                     st.error(f"Improvement engine error: {str(e)}")
+
+    # Render Persistent Improvement Results if present
+    if st.session_state.improve_result:
+        res = st.session_state.improve_result
+        st.divider()
+
+        st.markdown("### 📊 Overall Role Suitability Assessment")
+        st.info(res.get("overall_feedback", "Evaluation complete."))
+
+        st.markdown("### 📌 Actionable Section-by-Section Recommendations")
+        suggestions = res.get("suggestions", [])
+        for idx, suggestion in enumerate(suggestions, 1):
+            sec = suggestion.get("section", "General")
+            with st.expander(f"📌 **{idx}. {sec}**", expanded=True):
+                st.markdown(f"**Identified Weakness / Gap for Role:**\n{suggestion.get('issue', '')}")
+                st.markdown(f"**Exact Recommendation / Copy-Pasteable Phrasing:**\n{suggestion.get('suggestion', '')}")

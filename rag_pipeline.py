@@ -356,14 +356,56 @@ Return ONLY a valid JSON object matching this EXACT schema:
 )
 
 
+KNOWN_TECH_SKILLS = [
+    # Languages
+    "Python", "Java", "C++", "C#", "C", "JavaScript", "TypeScript", "PHP", "Ruby", "Go", "Golang",
+    "Rust", "Swift", "Kotlin", "Scala", "R", "MATLAB", "SQL", "HTML", "CSS", "Bash", "Shell", "PowerShell",
+    
+    # Frameworks & Web
+    "React", "React.js", "ReactJS", "Angular", "Vue", "Vue.js", "Next.js", "NextJS", "Node.js", "NodeJS", "Node",
+    "Express", "Express.js", "Django", "Flask", "FastAPI", "Spring Boot", "Spring", ".NET", "ASP.NET",
+    "Bootstrap", "Tailwind", "jQuery",
+    
+    # AI / ML / Data
+    "PyTorch", "TensorFlow", "Keras", "Scikit-Learn", "Sklearn", "Pandas", "NumPy", "SciPy", "OpenCV",
+    "NLTK", "spaCy", "Hugging Face", "Transformers", "LangChain", "LlamaIndex", "Streamlit", "Gradio",
+    "Machine Learning", "Deep Learning", "Artificial Intelligence", "AI", "GenAI", "Generative AI",
+    "RAG", "Retrieval-Augmented Generation", "LLM", "Large Language Models", "NLP", "Natural Language Processing",
+    "Computer Vision", "Data Science", "Data Analytics", "Data Engineering",
+    
+    # Databases & Vector Stores
+    "PostgreSQL", "Postgres", "MySQL", "SQLite", "MongoDB", "Redis", "DynamoDB", "Cassandra", "Elasticsearch",
+    "Neo4j", "Oracle", "SQL Server", "ChromaDB", "Chroma", "Pinecone", "Weaviate", "Qdrant", "FAISS",
+    
+    # Cloud & DevOps & Engineering
+    "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "K8s", "Terraform", "Ansible", "Jenkins",
+    "Git", "GitHub", "GitLab", "CI/CD", "Linux", "Unix", "Nginx", "Apache", "Kafka", "RabbitMQ",
+    "Spark", "Hadoop", "Airflow", "Jira", "System Design", "Microservices", "REST API", "RESTful", "GraphQL",
+    "Agile", "Scrum", "DevOps", "Unit Testing", "TDD", "Cybersecurity", "Cloud Computing"
+]
+
+
 def _extract_keywords(text: str) -> List[str]:
-    """Extracts dynamic technical terms, tools, certifications, and capitalized skill phrases from any text."""
+    """Extracts dynamic technical terms, tools, certifications, and skills from any text."""
     if not text:
         return []
 
-    pattern = r"\b[A-Z0-9][A-Za-z0-9+#.\-]*\b"
-    matches = re.findall(pattern, text)
+    text_lower = text.lower()
+    found_skills = []
+    seen = set()
 
+    # 1. Match known technical skills case-insensitively
+    for skill in KNOWN_TECH_SKILLS:
+        skill_lower = skill.lower()
+        pattern = r"\b" + re.escape(skill_lower) + r"\b"
+        if re.search(pattern, text_lower):
+            if skill_lower not in seen:
+                seen.add(skill_lower)
+                found_skills.append(skill)
+
+    # 2. Match capitalized technical terms & acronyms
+    capitalized_pattern = r"\b[A-Z0-9][A-Za-z0-9+#.\-]*\b"
+    matches = re.findall(capitalized_pattern, text)
     ignore_set = {
         "The", "And", "For", "With", "You", "Our", "We", "Are", "This", "That", "Your", "Have", "From",
         "Will", "Not", "All", "Can", "Must", "Work", "Team", "Experience", "Skills", "Education",
@@ -371,16 +413,14 @@ def _extract_keywords(text: str) -> List[str]:
         "Ability", "Key", "Required", "Preferred", "Responsibilities", "Qualifications", "Summary",
         "Years", "Degree", "Bachelor", "Master", "Ph.D", "Plus", "Other", "Including", "Using", "Building"
     }
-
-    unique_keywords = []
-    seen = set()
     for w in matches:
         w_clean = w.strip(".,;:()")
-        if len(w_clean) >= 2 and w_clean not in ignore_set and w_clean.lower() not in seen:
-            seen.add(w_clean.lower())
-            unique_keywords.append(w_clean)
+        if len(w_clean) >= 2 and w_clean not in ignore_set:
+            if w_clean.lower() not in seen:
+                seen.add(w_clean.lower())
+                found_skills.append(w_clean)
 
-    return unique_keywords
+    return found_skills
 
 
 def _fallback_screener_evaluation(resume_context: str, job_description: str) -> Dict[str, Any]:
@@ -392,7 +432,7 @@ def _fallback_screener_evaluation(resume_context: str, job_description: str) -> 
     missing_skills = [kw for kw in jd_skills if kw.lower() not in resume_context.lower()]
 
     if not matched_skills and resume_skills:
-        matched_skills = resume_skills[:3]
+        matched_skills = resume_skills[:5]
 
     total_req = len(jd_skills)
     if total_req > 0:
@@ -400,11 +440,11 @@ def _fallback_screener_evaluation(resume_context: str, job_description: str) -> 
     else:
         fit_score = 75
 
-    fit_score = max(40, min(95, fit_score))
+    fit_score = max(35, min(98, fit_score))
 
     suggestions = []
     if missing_skills:
-        suggestions.append(f"Highlight experience or certifications with key missing requirements: {', '.join(missing_skills[:2])}.")
+        suggestions.append(f"Highlight experience or certifications with key missing requirements: {', '.join(missing_skills[:3])}.")
     else:
         suggestions.append("Quantify your past achievements with concrete metric improvements (e.g., % latency reduction or efficiency gain).")
 
@@ -412,10 +452,10 @@ def _fallback_screener_evaluation(resume_context: str, job_description: str) -> 
     suggestions.append("Ensure project descriptions follow the Action-Verb + Task + Measurable Impact structure.")
 
     skill_breakdown = [
-        {"skill": sk, "present_in_resume": True, "note": "Verified in candidate resume excerpts."}
+        {"skill": sk, "present_in_resume": True, "note": "Verified in candidate resume."}
         for sk in matched_skills
     ] + [
-        {"skill": sk, "present_in_resume": False, "note": "Not explicitly listed in retrieved excerpts."}
+        {"skill": sk, "present_in_resume": False, "note": "Not explicitly listed in candidate resume."}
         for sk in missing_skills
     ]
 
@@ -423,9 +463,9 @@ def _fallback_screener_evaluation(resume_context: str, job_description: str) -> 
 
     return {
         "fit_score": fit_score,
-        "summary": f"Candidate demonstrates skills in {', '.join(matched_skills[:3]) if matched_skills else 'core domain requirements'}, but shows gaps in {', '.join(missing_skills[:2]) if missing_skills else 'specific specialized tools'}.",
-        "matched_skills": matched_skills if matched_skills else ["Core domain qualifications"],
-        "missing_skills": missing_skills if missing_skills else ["Specialized role tools"],
+        "summary": f"Candidate demonstrates skills in {', '.join(matched_skills[:4]) if matched_skills else 'core domain requirements'}, but shows gaps in {', '.join(missing_skills[:3]) if missing_skills else 'none'}.",
+        "matched_skills": matched_skills if matched_skills else ["General Technical Background"],
+        "missing_skills": missing_skills if missing_skills else ["None identified"],
         "suggestions": suggestions[:3],
         "skill_breakdown": skill_breakdown,
         "recommendation": f"{rec_label} — Candidate matches {fit_score}% of target requirements.",
@@ -441,6 +481,7 @@ def screen_resume(resume_id: str, job_description: str) -> Dict[str, Any]:
     if not chunks:
         raise ValueError("No relevant text chunks could be retrieved from the vector store.")
 
+    full_resume_text = get_full_resume_text(resume_id)
     resume_context = "\n---\n".join(chunks)
 
     try:
@@ -452,7 +493,19 @@ def screen_resume(resume_id: str, job_description: str) -> Dict[str, Any]:
         result = _validate_and_normalize_screener_schema(parsed)
     except Exception:
         # Fallback RAG analysis engine if HF remote API model endpoints fail
-        result = _fallback_screener_evaluation(resume_context, job_description.strip())
+        result = _fallback_screener_evaluation(full_resume_text or resume_context, job_description.strip())
+
+    # Enhance matched & missing skills validation using full_resume_text + retrieved chunks
+    extracted_jd = _extract_keywords(job_description)
+    if extracted_jd:
+        search_text = (full_resume_text + " " + resume_context).lower()
+        verified_matched = [s for s in extracted_jd if s.lower() in search_text]
+        verified_missing = [s for s in extracted_jd if s.lower() not in search_text]
+
+        if verified_matched:
+            result["matched_skills"] = verified_matched
+        if verified_missing:
+            result["missing_skills"] = verified_missing
 
     result["resume_id"] = resume_id
     return result
@@ -528,49 +581,61 @@ def _fallback_advisor_answer(question: str, resume_context: str, job_context: st
     jd_skills = _extract_keywords(job_context)
     resume_skills = _extract_keywords(resume_context)
 
-    matched_skills = [kw for kw in jd_skills if any(kw.lower() in r.lower() for r in resume_skills)]
+    matched_skills = [kw for kw in jd_skills if kw.lower() in resume_context.lower()]
     missing_skills = [kw for kw in jd_skills if kw.lower() not in resume_context.lower()]
 
     if not matched_skills and resume_skills:
         matched_skills = resume_skills[:4]
 
-    matched_str = ", ".join(matched_skills[:4]) if matched_skills else "Core Domain Skills"
+    matched_str = ", ".join(matched_skills[:4]) if matched_skills else "Core Domain Qualifications"
     missing_str = ", ".join(missing_skills[:3]) if missing_skills else "Specialized Job Tools"
+
+    # Search resume_context for specific lines matching question terms
+    question_words = [w.lower() for w in re.findall(r"\b\w{3,}\b", question) if w.lower() not in {"what", "how", "can", "the", "for", "my", "your", "this", "that", "with", "and", "about", "tell", "give", "show", "is", "are", "you"}]
+    relevant_lines = []
+    if resume_context:
+        for line in resume_context.split("\n"):
+            line_clean = line.strip()
+            if line_clean and any(w in line_clean.lower() for w in question_words):
+                relevant_lines.append(line_clean)
 
     sections = []
 
-    if any(k in q_lower for k in ["strength", "match", "qualif", "suitab", "why should", "fit", "strong", "good"]):
-        sections.append(f"### 💡 Key Strengths for this Position\nBased on your resume and target job requirements:")
-        sections.append(f"1. **Core Technical & Functional Fit**: Your background directly verifies experience with **{matched_str}**.")
+    if any(k in q_lower for k in ["strength", "match", "qualif", "suitab", "why should", "fit", "strong", "good", "top"]):
+        sections.append("### 💡 Key Strengths for this Position\nBased on your resume and target job requirements:")
+        sections.append(f"1. **Core Technical Fit**: Your background directly verifies experience with **{matched_str}**.")
         sections.append(f"2. **Domain Alignment**: Your resume context demonstrates hands-on implementation and problem-solving relevant to the primary job responsibilities.")
         sections.append(f"3. **Immediate Impact**: Emphasize during discussions how your background in **{matched_str}** allows you to ramp up quickly and deliver results.")
 
     elif any(k in q_lower for k in ["missing", "gap", "weak", "lack", "address", "disadvant", "dont have", "don't have"]):
-        sections.append(f"### ⚠️ Addressing Skill Gaps ({missing_str})\nHere is how to effectively handle missing qualifications:")
+        sections.append(f"### ⚠️ Strategy to Address Missing Qualifications ({missing_str})\nHere is how to effectively handle missing qualifications in your interview:")
         sections.append(f"1. **Position Transferable Experience**: Explain how your background in **{matched_str}** provides a strong foundation that translates directly to **{missing_str}**.")
         sections.append(f"2. **Demonstrate Proactive Learning**: Mention any recent tutorials, certifications, or self-study in **{missing_str}**.")
         sections.append(f"3. **Interview Script**: When asked about **{missing_str}**, say: *\"While my primary production focus has been in {matched_str}, I understand the architectural concepts behind {missing_str} and have quickly onboarded similar tools in past projects.\"*")
 
     elif any(k in q_lower for k in ["interview", "prep", "question", "ask", "answer", "behavioral", "star"]):
-        sections.append(f"### 🎯 Interview Preparation Strategy & Sample Questions\nHere are targeted interview questions for this role:")
+        sections.append("### 🎯 Interview Preparation Strategy & Targeted Questions\nHere are targeted interview questions and strategy for this role:")
         sections.append(f"1. **Technical Deep Dive**: *\"Can you walk us through a key project where you utilized {matched_str}?\"*\n   - **Strategy**: Use the STAR method (Situation, Task, Action, Result). Highlight your specific contribution and measurable outcomes.")
         sections.append(f"2. **Problem Solving & Architecture**: *\"How do you approach designing solutions or workflows for {matched_str}?\"*\n   - **Strategy**: Discuss best practices, error handling, and reliability.")
         sections.append(f"3. **Handling Gaps**: *\"How would you handle tasks requiring {missing_str}?\"*\n   - **Strategy**: Be honest about primary skills, then highlight rapid learning capability and transferable fundamentals.")
 
-    elif any(k in q_lower for k in ["summary", "bullet", "format", "rewrite", "write", "experience", "project", "how to put", "put in resume"]):
-        sections.append(f"### 📝 Recommended Resume Enhancements for this Position\nHere are copy-pasteable bullet points tailored to your profile:")
+    elif any(k in q_lower for k in ["summary", "bullet", "format", "rewrite", "write", "experience", "project", "script", "resume"]):
+        sections.append("### 📝 Recommended Resume Enhancements & Copy-Pasteable Script\nHere are tailored bullet points for your profile:")
         sections.append(f"1. **Professional Summary**: *\"Results-driven Specialist with proven expertise in {matched_str}, focused on delivering scalable solutions and operational efficiency for target positions.\"*")
         sections.append(f"2. **Role-Tailored Bullet 1**: *\"Engineered and maintained core workflows utilizing **{matched_str}**, improving system performance by 35% and ensuring high reliability.\"*")
         sections.append(f"3. **Role-Tailored Bullet 2**: *\"Collaborated with cross-functional teams to deploy solutions using **{matched_str}**, streamlining process execution and project timelines.\"*")
 
     else:
-        sections.append(f"### 💬 Response for Your Query: \"{question}\"\nHere is direct guidance based on your resume and job requirements:")
-        sections.append(f"1. **Primary Focus**: The job description emphasizes **{matched_str}**. Highlight these prominently in your resume and introductory interview answers.")
-        sections.append(f"2. **Addressing Gaps**: For areas like **{missing_str}**, prepare concise examples of related technical concepts and your ability to learn quickly.")
-        sections.append(f"3. **Quantifiable Accomplishments**: Attach clear metrics (percentages, throughput, latency, revenue) to every key achievement in your resume.")
+        sections.append(f"### 💬 Response for Your Query: \"{question}\"\nHere is direct guidance grounded in your resume and job requirements:")
+        sections.append(f"1. **Primary Technical Alignment**: Your resume demonstrates core qualifications in **{matched_str}** matching target expectations.")
+        sections.append(f"2. **Addressing Job Requirements**: Highlight **{matched_str}** prominently in your interview answers while addressing **{missing_str}** through rapid learning examples.")
+        if relevant_lines:
+            sections.append("\n**3. Relevant Excerpts Found in Candidate Resume:**")
+            for line in relevant_lines[:3]:
+                sections.append(f"- *\"{line}\"*")
 
-    if resume_context and "(No resume" not in resume_context:
-        snippet = resume_context[:250].replace("\n", " ").strip()
+    if resume_context and "(No resume" not in resume_context and not relevant_lines:
+        snippet = resume_context[:300].replace("\n", " ").strip()
         sections.append(f"\n---\n**Retrieved Resume Context:** *\"{snippet}...\"*")
 
     return "\n\n".join(sections)
@@ -601,11 +666,15 @@ def improve_resume(
     return result
 
 
-ADVISOR_SYSTEM = """You are a warm, knowledgeable technical career advisor and interview coach.
-Your job is to answer questions about the candidate's profile, qualifications, skill gaps, and strategy for a specific role.
+ADVISOR_SYSTEM = """You are a warm, highly structured technical career advisor and interview coach.
+Your job is to answer questions about the candidate's profile, qualifications, skill gaps, interview strategy, and resume optimization for a specific role.
 
-Ground your answers in the provided RESUME EXCERPTS and JOB DESCRIPTION CONTEXT when available.
-Be concise, clear, and practical."""
+Rules for your responses:
+1. Ground your answers strictly in the provided RETRIEVED RESUME CONTEXT and ACTIVE JOB DESCRIPTION CONTEXT when available.
+2. Structure your answers cleanly using clear markdown headers (e.g. ###), bullet points, and bold text for maximum readability.
+3. Keep explanations simple, easy to understand, and highly practical for real candidates and recruiters.
+4. When relevant, provide exact sample interview response scripts or copy-pasteable bullet points.
+5. Keep explanations professional, encouraging, and focused on actionable advice."""
 
 ADVISOR_PROMPT = ChatPromptTemplate.from_messages(
     [
@@ -638,10 +707,13 @@ def ask_advisor(
 
     if resume_id and resume_exists(resume_id):
         query_text = f"{question} {job_description or ''}"
-        chunks = retrieve_relevant_chunks(resume_id, query=query_text, k=4)
+        chunks = retrieve_relevant_chunks(resume_id, query=query_text, k=5)
+        full_text = get_full_resume_text(resume_id)
         if chunks:
             used_resume_context = True
             resume_context = "\n---\n".join(chunks)
+            if full_text and len(full_text) < 4000:
+                resume_context = full_text
 
     history_str = "\n".join(f"{m['role']}: {m['content']}" for m in chat_history[-6:])
 
