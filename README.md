@@ -6,14 +6,6 @@ Unlike generic chatbot wrappers, this application embeds candidate resumes into 
 
 ---
 
-## 📐 System Architecture
-
-```
-![System Architecture](downloads/sysarch.png)
-```
-
----
-
 ## ✨ Core Features & Problem Statement Implementation
 
 1. **Structured Evaluation Output**:
