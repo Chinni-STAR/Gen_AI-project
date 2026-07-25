@@ -9,19 +9,8 @@ Unlike generic chatbot wrappers, this application embeds candidate resumes into 
 ## 📐 System Architecture
 
 ```mermaid
-graph TD
-    A[Candidate Document PDF / DOCX / TXT] -->|Extract Text| B[document_parser.py]
-    B -->|Text Chunks| C[RecursiveCharacterTextSplitter]
-    C -->|Local Dense Vectors| D[HuggingFaceEmbeddings: all-MiniLM-L6-v2]
-    D -->|Index & Persist| E[ChromaDB Vector Store]
-    
-    F[Target Job Description] -->|Semantic Search Query| E
-    E -->|Top-K Relevant Chunks| G[Context-Augmented Prompt Template]
-    F --> G
-    
-    G -->|Prompt Ingestion| H[HuggingFace LLM Endpoint Qwen2.5-7B-Instruct]
-    H -->|Raw LLM Response| I[_parse_json_response & Schema Normalizer]
-    I -->|Fit Score, Skills, 3 Suggestions| J[Streamlit Interactive Dashboard]
+![Uploading image.png…]()
+
 ```
 
 ---
