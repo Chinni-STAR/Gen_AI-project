@@ -8,9 +8,10 @@ Unlike generic chatbot wrappers, this application embeds candidate resumes into 
 
 ## 📐 System Architecture
 
-```mermaid
-![Uploading image.png…]()
-
+```
+<p align="center">
+  <img src="assets/ChatGPT.png" alt="AI Resume Screener Architecture" width="900">
+</p>
 ```
 
 ---
